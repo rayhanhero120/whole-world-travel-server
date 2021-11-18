@@ -1,14 +1,17 @@
 const express = require('express')
-const { MongoClient } = require('mongodb');
-const cors = require('cors')
-const ObjectId = require('mongodb').ObjectId
-require('dotenv').config()
 const app = express()
+const cors = require('cors')
+require('dotenv').config()
+const { MongoClient } = require('mongodb');
+const ObjectId = require('mongodb').ObjectId
+const { query } = require('express')
 const port = process.env.PORT || 5000
 
 //middlwere
 app.use(cors())
 app.use(express.json())
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.crs5f.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -18,7 +21,8 @@ async function run() {
         await client.connect()
         const database = client.db('worldTravel')
         const serviceCollection = database.collection('services')
-        const orderCollection = database.collection('users')
+        const usersCollection = database.collection('users')
+        const orderCollection = database.collection('myOrders')
 
         // GET API
         app.get('/services', async (req, res) => {
@@ -26,28 +30,40 @@ async function run() {
             const services = await cursor.toArray()
             res.send(services)
         })
+        //get single service
+        app.get('/singleService/:id', async (req, res) => {
+            const result = await serviceCollection.find({ _id: ObjectId(req.params.id) }).toArray()
+            res.send(result[0])
+        })
+        //Ordercollection
+        app.get('/order', async (req, res) => {
+            const person = { name: 'rayhan' }
+            const result = await orderCollection.insertOne(person)
+            res.send(result)
+        })
+        app.post('/order', async (req, res) => {
+            const result = await orderCollection.insertOne(req.body)
+            res.send(result)
+        })
 
-        //  GET API
-        app.get('/users', async (req, res) => {
-            const cursor = orderCollection.find({})
-            const users = await cursor.toArray()
-            res.send(users)
+        app.get('/myOrders/:email', async (req, res) => {
+            const result = await orderCollection.find({ email: req.params.email }).toArray()
+            res.send(result)
+
+        })
+
+        app.delete('/deleteMyOrder/:id', async (req, res) => {
+            const result = await orderCollection.deleteOne({ _id: ObjectId(req.params.id), })
+            res.send(result)
         })
 
         //user id
         app.get('/users/:id', async (req, res) => {
             const id = req.params.id
             const query = { _id: ObjectId(id) }
-            const user = await orderCollection.findOne(query)
+            const user = await usersCollection.findOne(query)
             console.log('load user', id)
             res.send(user)
-        })
-
-        //  add orders api
-        app.post('/users', async (req, res) => {
-            const user = req.body
-            const result = await orderCollection.insertOne(user)
-            res.json(result)
         })
 
         app.put('/users/:id', async (req, res) => {
@@ -61,7 +77,7 @@ async function run() {
                     email: updateUser.email
                 },
             }
-            const result = await orderCollection.updateOne(filter, updateDoc, options)
+            const result = await usersCollection.updateOne(filter, updateDoc, options)
             console.log('updating user', req)
             res.json(result)
         })
@@ -70,7 +86,7 @@ async function run() {
         app.delete('/users/:id', async (req, res) => {
             const id = req.params.id
             const query = { _id: ObjectId(id) }
-            const result = await orderCollection.deleteOne(query)
+            const result = await usersCollection.deleteOne(query)
             console.log('delere', id)
             res.json(result)
         })
